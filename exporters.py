@@ -18,6 +18,33 @@ SESSION_RE = re.compile(r"^session_\d{8}_\d{6}(_\d+)?$")
 PARAGRAPH_SECONDS = 60  # markdown: start a new timestamped paragraph every ~minute
 
 
+_ELLIPSIS_RUN = re.compile(r"(?:\s*(?:\.{3}|…)){2,}")
+
+
+def clean_text(text: str) -> str:
+    """Collapse Whisper's '... ... ...' runs (common on music/silence) into one ellipsis."""
+    return _ELLIPSIS_RUN.sub("...", text).strip()
+
+
+def _norm(word: str) -> str:
+    return re.sub(r"[^\w']", "", word.lower())
+
+
+def dedupe_overlap(prev: str, text: str, max_words: int = 4) -> str:
+    """Drop words at the start of `text` that repeat the end of `prev`.
+
+    Chunks overlap slightly so words aren't cut in half, which means Whisper often
+    transcribes the boundary word(s) twice: "where four" + "four astronauts".
+    """
+    prev_words, words = prev.split(), text.split()
+    for k in range(min(max_words, len(prev_words), len(words) - 1), 0, -1):
+        tail = [_norm(w) for w in prev_words[-k:]]
+        head = [_norm(w) for w in words[:k]]
+        if tail == head and any(tail):
+            return " ".join(words[k:])
+    return text
+
+
 # ---------- Loading ----------
 def load_session(path: Path) -> tuple[dict, list[dict]]:
     """Return (meta, segments) from a session JSONL file. Skips corrupt lines."""

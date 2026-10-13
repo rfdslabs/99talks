@@ -1,5 +1,15 @@
 # 99talks
 
+```text
+ █████╗  █████╗ ████████╗ █████╗ ██╗     ██╗  ██╗███████╗
+██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║     ██║ ██╔╝██╔════╝
+╚██████║╚██████║   ██║   ███████║██║     █████╔╝ ███████╗
+ ╚═══██║ ╚═══██║   ██║   ██╔══██║██║     ██╔═██╗ ╚════██║
+ █████╔╝ █████╔╝   ██║   ██║  ██║███████╗██║  ██╗███████║
+ ╚════╝  ╚════╝    ╚═╝   ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚══════╝
+▁▂▃▅▇█▇▅▃▂▁▂▄▆▄▂▁  live streams → text → your AI  ▁▂▄▆▄▂▁▂▃▅▇█▇▅▃▂▁
+```
+
 **Turn live streams into text your AI tools can learn from.**
 
 99talks transcribes a YouTube Live (or a recorded video) in real time, 100% locally, and saves everything as you go. When the talk is over, export it as Markdown and drop it into [NotebookLM](https://notebooklm.google.com), ChatGPT, Claude, or your own agents to generate study notes, summaries, content ideas, or a knowledge base.
@@ -9,6 +19,8 @@
 - **Never lose a talk**: every segment is written to disk as it's transcribed, and the stream auto-reconnects if it drops.
 - **LLM-ready export**: Markdown with title, channel, URL, date and description, plus timestamped paragraphs. Also TXT, SRT, and VTT.
 - **Any language** Whisper supports, with auto-detection.
+
+![99talks transcribing a NASA video live](docs/screenshot-live.png)
 
 ## Requirements
 
@@ -36,27 +48,27 @@ The first run downloads the Whisper model (~460 MB for `small`) to `~/.cache/hug
 ## From live to NotebookLM
 
 1. Start 99talks when the live begins (or after it ends, using the recording URL).
-2. When it's over, click **Markdown** in the session list.
+2. When it's over, click **MD** in the session list.
 3. In NotebookLM, **Add source → Upload** the `.md` file.
 4. Ask it for a study guide, FAQ, audio overview, or anything else.
 
-The same file works as context for agents. It's plain Markdown with a metadata header:
+![Past sessions with one-click export](docs/screenshot-sessions.png)
+
+The same file works as context for agents. It's plain Markdown with a metadata header. This is a real export of a [NASA recap video](https://www.youtube.com/watch?v=_eeZQw9PBc0), shortened:
 
 ```markdown
-# Building Agents in Production
+# Artemis II Launches Astronauts to the Moon (Official NASA Recap)
 
-- **Source:** https://www.youtube.com/watch?v=...
-- **Channel:** Some Channel
-- **Recorded:** 2026-10-12 20:00
-- **Duration:** 01:32:10
+- **Source:** https://www.youtube.com/watch?v=_eeZQw9PBc0
+- **Channel:** NASA
+- **Recorded:** 2026-10-12 23:00
+- **Duration:** 00:02:13
 - **Language:** en
 - **Transcribed with:** faster-whisper (small) via 99talks
 
 ## Transcript
 
-**[00:00:00]** Welcome everyone, today we're going to talk about...
-
-**[00:01:00]** The first thing you need is...
+**[00:00:01]** Good afternoon from the Space Coast of Florida where four astronauts are about to suit up for NASA's boldest test flight in a generation. Our goal is to pursue the secrets of the universe to change the world in air. We have a ton of people gathering around the world to watch this. history-making moment. This crew cohesion, we're ...
 ```
 
 ## Export API
@@ -116,8 +128,8 @@ Anything `yt-dlp` can stream should work (YouTube is the tested path). For recor
 - **Latency** is roughly chunk size + transcription time (~6–8 s on CPU).
 - **No speaker diarization**: Whisper doesn't know who is speaking.
 - **One capture at a time** per server.
-- **Chunk-boundary repeats**: the 0.5 s overlap can occasionally duplicate a word.
-- **YouTube changes** can break `yt-dlp`. Keep it updated (`pip install -U yt-dlp`).
+- **Chunk-boundary repeats**: words repeated across the 0.5 s chunk overlap are removed (up to 4 words), but a longer repeated phrase can slip through.
+- **YouTube changes** can break `yt-dlp`. If you see `HTTP Error 403: Forbidden`, update it (`pip install -U yt-dlp` or `brew upgrade yt-dlp`).
 
 ## Roadmap
 

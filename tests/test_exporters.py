@@ -1,7 +1,7 @@
 import json
 
 from exporters import (
-    SESSION_RE, export_filename, fmt_ts, load_session, session_summary,
+    SESSION_RE, clean_text, dedupe_overlap, export_filename, fmt_ts, load_session, session_summary,
     slugify, to_md, to_srt, to_txt, to_vtt,
 )
 
@@ -89,3 +89,17 @@ def test_filenames():
     assert slugify("Live: Ação & Reação!") == "live-acao-reacao"
     assert export_filename("session_20261012_220000", {"title": "Live: Ação"}, "md") == "live-acao_20261012_220000.md"
     assert export_filename("session_20261012_220000", {}, "txt") == "transcript_20261012_220000.txt"
+
+
+def test_clean_text_collapses_ellipsis_runs():
+    assert clean_text("story of... ... ... ... ...") == "story of..."
+    assert clean_text("wait… … …") == "wait..."
+    assert clean_text("a single... is fine") == "a single... is fine"
+
+
+def test_dedupe_overlap():
+    assert dedupe_overlap("Florida where four", "four astronauts are") == "astronauts are"
+    assert dedupe_overlap("a number of times.", "of times. This mission") == "This mission"
+    assert dedupe_overlap("It's the story of...", "story of humanity.") == "humanity."
+    assert dedupe_overlap("we went home", "and then left") == "and then left"
+    assert dedupe_overlap("yes", "yes") == "yes"  # never empty a segment

@@ -36,7 +36,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response
 from faster_whisper import WhisperModel
 
 from exporters import (
-    SESSION_RE, export_filename, load_session, session_summary,
+    SESSION_RE, clean_text, dedupe_overlap, export_filename, load_session, session_summary,
     to_md, to_srt, to_txt, to_vtt,
 )
 
@@ -75,6 +75,7 @@ class State:
         self.current_url: str | None = None
         self.language: str | None = None   # None = auto-detect (until locked)
         self.recent: list[dict] = []        # recent segments, replayed to new WebSocket clients
+        self.last_text = ""                 # previous chunk's text, to drop words repeated by the overlap
         self.stop_requested = False         # distinguishes manual stop from stream drop
         self.audio_seconds = 0.0            # absolute position in the audio stream
         self.is_live: bool | None = None    # from metadata; False = recorded video, don't reconnect at the end
@@ -322,7 +323,8 @@ async def transcribe_chunk(pcm_bytes: bytes, has_overlap: bool):
             beam_size=1,
             condition_on_previous_text=False,
         )
-        out = [(s.start, s.end, s.text.strip()) for s in segments if s.text.strip()]
+        out = [(s.start, s.end, clean_text(s.text)) for s in segments]
+        out = [seg for seg in out if seg[2].strip(". …")]  # drop empty / dots-only segments
         return out, info
 
     t0 = time.time()
@@ -334,6 +336,7 @@ async def transcribe_chunk(pcm_bytes: bytes, has_overlap: bool):
     dt = time.time() - t0
 
     if not segs:
+        state.last_text = ""
         return
 
     if state.language is None and info.language_probability >= LANG_LOCK_PROBABILITY:
@@ -342,10 +345,14 @@ async def transcribe_chunk(pcm_bytes: bytes, has_overlap: bool):
         persist({"type": "meta", "language": info.language})
         print(f"[lang] detected '{info.language}' ({info.language_probability:.2f}), locking")
 
+    text = " ".join(t for _, _, t in segs)
+    if has_overlap and state.last_text:
+        text = dedupe_overlap(state.last_text, text)
+    state.last_text = text
     entry = {
         "type": "segment",
         "ts": time.strftime("%H:%M:%S"),
-        "text": " ".join(t for _, _, t in segs),
+        "text": text,
         "start": round(max(base_offset + segs[0][0], 0), 2),
         "end": round(base_offset + segs[-1][1], 2),
         "latency": round(dt, 2),
@@ -397,6 +404,7 @@ async def start(payload: dict):
     state.current_url = url
     state.language = None if language == "auto" else language
     state.recent = []
+    state.last_text = ""
     state.is_live = None
     state.audio_seconds = 0.0
     state.session_file = new_session_file()
@@ -440,7 +448,8 @@ async def sessions():
     for f in files:
         summary = session_summary(f)
         summary["live"] = summary["id"] == current
-        out.append(summary)
+        if summary["segments"] or summary["live"]:  # hide failed attempts that never produced text
+            out.append(summary)
     return out
 
 
