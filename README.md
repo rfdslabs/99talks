@@ -21,7 +21,7 @@
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/99talks.git
+git clone https://github.com/rfdslabs/99talks.git
 cd 99talks
 python3.12 -m venv .venv
 source .venv/bin/activate
