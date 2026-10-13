@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime data (your transcripts stay local)
+transcripts/
+
+# Local tooling / OS
+.gstack/
+.DS_Store
+*.zip
+.env
